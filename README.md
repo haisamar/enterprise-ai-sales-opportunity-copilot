@@ -96,6 +96,59 @@ cd backend
 python scripts/test_watsonx.py
 ```
 
+## Deployed architecture
+
+LOCAL:
+React → localhost FastAPI → SQLite or configured Postgres
+
+DEPLOYED:
+Vercel React frontend
+→ Vercel FastAPI backend
+→ Neon PostgreSQL
+→ IBM Cloud IAM
+→ watsonx.ai Dallas
+→ Granite 4 H Small
+
+- **Vercel** hosts the frontend and backend applications.
+- **Neon** is persistent PostgreSQL for the deployed backend. SQLite is local development only and is not used as production storage on Vercel.
+- **watsonx.ai** performs live inference when `COPILOT_MODE=watsonx`.
+- IBM secrets, bearer tokens, and `DATABASE_URL` exist only on the backend. They are never sent to the frontend.
+- This PoC may create missing tables with SQLAlchemy `create_all`. A production enterprise system would use proper migrations such as Alembic.
+
+### Vercel setup (two projects, same GitHub repo)
+
+Do not deploy secrets in Git. Create two Vercel projects from this repository.
+
+**Backend project**
+
+1. Import the GitHub repository in Vercel.
+2. Set Root Directory to `backend`.
+3. Framework / runtime: Python / FastAPI. Python version is pinned to 3.12 via `.python-version`.
+4. The discoverable entrypoint is `backend/index.py`, which imports the existing app from `app.main`.
+5. Set Environment Variables (backend only):
+   - `COPILOT_MODE`
+   - `WATSONX_API_KEY`
+   - `WATSONX_PROJECT_ID`
+   - `WATSONX_URL`
+   - `WATSONX_MODEL_ID`
+   - `WATSONX_API_VERSION`
+   - `DATABASE_URL` (Neon PostgreSQL URI)
+   - `CORS_ORIGINS` (deployed frontend origin, no wildcard)
+6. Deploy. Confirm `GET /health`, `GET /api/ai/status`, and `POST /api/ai/ping`.
+7. `index.py` is configured with `maxDuration` 60 seconds so Granite generation can finish. Confirm your Vercel plan allows that duration.
+
+**Frontend project**
+
+1. Import the same GitHub repository as a second Vercel project.
+2. Set Root Directory to `frontend`.
+3. Framework: Vite. Output directory: `dist`.
+4. Set Environment Variable:
+   - `VITE_API_BASE_URL` = the deployed backend origin, for example `https://your-backend.vercel.app`
+5. Deploy.
+6. Copy the frontend origin into the backend `CORS_ORIGINS` value and redeploy the backend if needed.
+
+Do not add `WATSONX_API_KEY`, IBM tokens, or `DATABASE_URL` to the frontend project.
+
 ## Interview-safe one-liner
 
 > I designed a bounded opportunity-analysis agent that turns seller-submitted account context into a seller-reviewed discovery and proof-of-value brief. Mock mode is the reliable local demo; IBM watsonx.ai and Granite are the live inference path when credentials are present and tested.
