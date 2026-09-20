@@ -1,5 +1,9 @@
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+from .brief_schema import OpportunityBrief
 
 
 class OpportunityCreate(BaseModel):
@@ -26,6 +30,46 @@ class AnalysisOut(BaseModel):
     model_id: str
     latency_ms: int
     result: dict
-    human_reviewed: bool
+    review_status: str
+    review_note: str = ""
+    fallback_used: bool = False
+    repair_attempted: bool = False
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewIn(BaseModel):
+    status: Literal["approved", "needs_revision"]
+    note: str = ""
+
+
+class CrmExportOut(BaseModel):
+    id: int
+    analysis_id: int
+    opportunity_id: int
+    payload: dict
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AiStatusOut(BaseModel):
+    copilot_mode: str
+    credentials_present: bool
+    provider_when_live: str = "watsonx.ai"
+    model_id: str
+    watsonx_url_configured: bool
+    review_required: bool = True
+
+
+class AiPingOut(BaseModel):
+    connected: bool
+    provider: str | None = None
+    model_id: str | None = None
+    base_url: str | None = None
+    latency_ms: int | None = None
+    stage: str
+    error: str | None = None
+
+
+class BriefValidationOut(BaseModel):
+    brief: OpportunityBrief

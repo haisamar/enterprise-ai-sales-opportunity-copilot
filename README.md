@@ -1,75 +1,69 @@
 # Enterprise AI Sales Opportunity Copilot
 
-A portfolio proof-of-concept for enterprise technical selling. The application turns structured account and opportunity context into a seller-reviewed discovery brief containing business problems, stakeholder hypotheses, discovery questions, technical constraints, solution hypotheses, proof-of-value criteria, and a business-value measurement plan.
+A portfolio proof-of-concept for enterprise technical selling. The application turns seller-submitted account context into a seller-reviewed discovery brief: known facts, unknowns, buyer/stakeholder hypotheses, discovery questions, technical constraints, solution hypotheses, proof of value, a consultative conversation angle, and a CRM-ready opportunity summary.
+
+This is a **bounded opportunity-analysis agent / agent-assisted workflow**. It does not autonomously act on customers, write mass email, or replace seller judgment.
 
 ## Truthful project status
 
-This repository is a portfolio proof-of-concept. It is not a production CRM, autonomous seller, or deployed customer system. The seller remains in control of the output and must review all generated content before it is used.
+This repository is a portfolio proof-of-concept. It is not a production CRM, autonomous seller, or deployed customer system.
+
+- **Local implemented behavior:** deterministic mock generation, SQLite persistence, human review states, JSON export, simulated CRM handoff.
+- **Live IBM integration path:** IBM Cloud IAM → watsonx.ai chat API → configured Granite model. The adapter, status endpoint, and ping endpoint are implemented.
+- **Live inference:** IBM watsonx.ai / Granite 4 H Small inference was tested successfully against the Dallas endpoint.
+
+The seller remains in control. AI output starts as `pending` and is never auto-approved.
 
 ## Architecture
 
 - React/Vite frontend
 - FastAPI backend
-- PostgreSQL persistence
-- IBM watsonx.ai chat API
-- IBM Granite model (configurable model ID)
-- REST API boundary between UI and analysis service
-- Model-call audit metadata: model, prompt version, latency, timestamp
+- SQLite for the local demo (PostgreSQL-compatible URL already supported)
+- Bounded agent steps: load account context → generate brief → validate schema → ground facts → persist run
+- IBM watsonx.ai + IBM Granite when `COPILOT_MODE=watsonx` and credentials are present
+- Deterministic mock mode otherwise
+- REST API boundary, human review, CRM-ready export simulation
 
 ## What the PoC demonstrates
 
 1. Structured customer-discovery intake
-2. Account/opportunity reasoning
-3. Buyer/stakeholder hypotheses
+2. Deterministic known facts vs AI hypotheses
+3. Buyer/stakeholder persona hypotheses
 4. Discovery-question generation
 5. Technical-constraint mapping
 6. Solution-hypothesis generation
-7. Proof-of-value planning
-8. Business-value measurement plan
-9. CRM-ready opportunity brief
+7. Consultative conversation angle (not an email generator)
+8. Proof-of-value and business-value measurement planning
+9. CRM-ready opportunity brief and simulated webhook export
 10. Human review before downstream use
 
 ## Explicit non-goals
 
 - No autonomous customer outreach
+- No mass-email or email-campaign product
 - No automatic pricing or commercial commitments
-- No automatic CRM writes in the baseline build
+- No live Salesforce/HubSpot write-back
 - No claim of production readiness
 - No claim of measured sales uplift
 
 ## Run locally
 
-### 1. PostgreSQL
-
-```bash
-docker compose up -d db
-```
-
-### 2. Backend
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv .venv
-# Windows: .venv\\Scripts\\activate
+# Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp ../.env.example .env
+copy ..\.env.example .env   # Windows
+# cp ../.env.example .env   # macOS/Linux
 uvicorn app.main:app --reload --port 8000
 ```
 
-The default `COPILOT_MODE=mock` works without IBM credentials.
+Default `COPILOT_MODE=mock` works without IBM credentials and uses SQLite.
 
-For live watsonx.ai inference, set:
-
-```env
-COPILOT_MODE=watsonx
-WATSONX_API_KEY=...
-WATSONX_PROJECT_ID=...
-WATSONX_URL=https://us-south.ml.cloud.ibm.com
-WATSONX_MODEL_ID=ibm/granite-4-h-small
-```
-
-### 3. Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -79,6 +73,29 @@ npm run dev
 
 Open http://localhost:5173.
 
+### 3. Optional live watsonx.ai
+
+Obtain from IBM Cloud and put them only in `.env` (never commit):
+
+- IBM Cloud API key → `WATSONX_API_KEY`
+- watsonx.ai project ID → `WATSONX_PROJECT_ID`
+- Regional base URL → `WATSONX_URL` (example: `https://us-south.ml.cloud.ibm.com`)
+- Model ID, default `ibm/granite-4-h-small`
+
+Then either:
+
+- keep `COPILOT_MODE=mock` for a reliable demo and use **Test IBM Connection**, or
+- set `COPILOT_MODE=watsonx` so opportunity generation uses Granite.
+
+`POST /api/ai/ping` always attempts a real IBM call. It never silently uses mock.
+
+CLI check:
+
+```bash
+cd backend
+python scripts/test_watsonx.py
+```
+
 ## Interview-safe one-liner
 
-> I designed and implemented a portfolio proof-of-concept that structures account context into a seller-reviewed discovery and proof-of-value brief, with IBM watsonx.ai/Granite as the AI layer when live credentials are enabled.
+> I designed a bounded opportunity-analysis agent that turns seller-submitted account context into a seller-reviewed discovery and proof-of-value brief. Mock mode is the reliable local demo; IBM watsonx.ai and Granite are the live inference path when credentials are present and tested.

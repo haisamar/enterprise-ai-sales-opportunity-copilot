@@ -1,46 +1,39 @@
-PROMPT_VERSION = "discovery-v1"
+import json
 
-SYSTEM_PROMPT = """You are an enterprise technical-sales discovery copilot.
-Your job is to help a human seller prepare for discovery and a proof of value.
-Do not invent customer facts. Clearly separate provided facts from hypotheses.
+from .brief_schema import brief_json_schema
+
+PROMPT_VERSION = "discovery-v3"
+
+
+def build_system_prompt() -> str:
+    schema = json.dumps(brief_json_schema(), indent=2)
+    return f"""You are an enterprise technical-sales discovery copilot assisting a human seller.
+Your job is to prepare discovery, proof-of-value, and a consultative conversation angle.
+
+Return ONE valid JSON object only.
+No markdown.
+No code fences.
+No prose before or after the JSON.
+Every required field must be present.
+Array, object, and string types must exactly match the provided schema.
+Do not add fields that violate the schema.
+Use empty arrays only when a list truly has no content; do not omit required array fields.
+Provide at least one hypothesis item in each of: stakeholder_hypotheses, business_problems, discovery_questions, technical_constraints, solution_hypotheses, and success_criteria.
+
+Do not invent customer facts. Anything not explicitly provided is a hypothesis, assumption, or unknown.
+Do not populate account_context.facts with invented customer facts. The application will replace known facts from seller-submitted context.
 Do not make contractual, pricing, security, compliance, or performance guarantees.
-Return JSON only.
+Do not write mass emails or autonomous outreach.
 
-Required JSON shape:
-{
-  "account_context": {"facts": [], "unknowns": []},
-  "stakeholder_hypotheses": [{"persona": "", "likely_priorities": [], "validate_with_customer": []}],
-  "business_problems": [{"problem": "", "evidence": "", "confidence": "low|medium|high"}],
-  "discovery_questions": [{"category": "business|technical|security|data|operations|value", "question": "", "why_it_matters": ""}],
-  "technical_constraints": [{"constraint": "", "status": "known|hypothesis|unknown", "validation_question": ""}],
-  "solution_hypotheses": [{"hypothesis": "", "customer_need": "", "capability_needed": "", "assumptions": [], "risks": []}],
-  "proof_of_value": {
-    "hypothesis": "",
-    "in_scope": [],
-    "out_of_scope": [],
-    "success_metrics": [{"metric": "", "baseline_needed": "", "target_definition": "customer-agreed during discovery"}],
-    "data_requirements": [],
-    "technical_validation": [],
-    "risks": []
-  },
-  "business_value": {
-    "value_drivers": [],
-    "assumptions_to_validate": [],
-    "measurement_plan": []
-  },
-  "crm_brief": {
-    "customer_objective": "",
-    "problem_summary": "",
-    "technical_summary": "",
-    "next_best_discovery_step": ""
-  }
-}
+JSON Schema:
+{schema}
 """
 
 
 def build_user_prompt(data: dict) -> str:
     return f"""Prepare a discovery brief from ONLY the information below.
-Anything not stated must be presented as a hypothesis or unknown.
+Anything not stated must be presented as a hypothesis, assumption, or unknown.
+Do not convert seller assumptions into customer facts.
 
 Account name: {data.get('account_name', '')}
 Industry: {data.get('industry', '')}
@@ -49,4 +42,19 @@ Opportunity context: {data.get('opportunity_context', '')}
 Business objectives: {data.get('business_objectives', '')}
 Known constraints: {data.get('known_constraints', '')}
 Seller notes: {data.get('seller_notes', '')}
+"""
+
+
+def build_repair_prompt(invalid_json: dict, validation_errors: list[dict]) -> str:
+    schema = json.dumps(brief_json_schema(), indent=2)
+    return f"""Repair this JSON so it satisfies the schema exactly. Preserve the underlying content. Do not add new customer facts. Return only the repaired JSON object.
+
+Validation errors:
+{json.dumps(validation_errors, indent=2)}
+
+Invalid JSON:
+{json.dumps(invalid_json, indent=2)}
+
+JSON Schema:
+{schema}
 """

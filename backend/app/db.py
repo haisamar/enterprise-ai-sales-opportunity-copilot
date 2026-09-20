@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from .config import settings
 
@@ -18,3 +18,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def ensure_sqlite_columns():
+    if not settings.database_url.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(analysis_runs)")).fetchall()}
+        if columns and "repair_attempted" not in columns:
+            conn.execute(text("ALTER TABLE analysis_runs ADD COLUMN repair_attempted BOOLEAN DEFAULT 0"))
