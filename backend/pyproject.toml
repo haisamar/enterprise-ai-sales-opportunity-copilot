@@ -1,0 +1,8 @@
+[project]
+name = "enterprise-ai-sales-opportunity-copilot-api"
+version = "0.2.0"
+requires-python = ">=3.12"
+description = "Enterprise AI Sales Opportunity Copilot API"
+
+[tool.vercel]
+entrypoint = "app.main:app"

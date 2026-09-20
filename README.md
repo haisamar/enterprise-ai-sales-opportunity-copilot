@@ -124,7 +124,7 @@ Do not deploy secrets in Git. Create two Vercel projects from this repository.
 1. Import the GitHub repository in Vercel.
 2. Set Root Directory to `backend`.
 3. Framework / runtime: Python / FastAPI. Python version is pinned to 3.12 via `.python-version`.
-4. The discoverable entrypoint is `backend/index.py`, which imports the existing app from `app.main`.
+4. Vercel discovers the existing FastAPI app via `backend/pyproject.toml` (`tool.vercel.entrypoint = "app.main:app"`).
 5. Set Environment Variables (backend only):
    - `COPILOT_MODE`
    - `WATSONX_API_KEY`
@@ -135,7 +135,7 @@ Do not deploy secrets in Git. Create two Vercel projects from this repository.
    - `DATABASE_URL` (Neon PostgreSQL URI)
    - `CORS_ORIGINS` (deployed frontend origin, no wildcard)
 6. Deploy. Confirm `GET /health`, `GET /api/ai/status`, and `POST /api/ai/ping`.
-7. `index.py` is configured with `maxDuration` 60 seconds so Granite generation can finish. Confirm your Vercel plan allows that duration.
+7. Granite generation is about 15 seconds and uses Vercel’s native FastAPI / Fluid Compute duration. No custom `vercel.json` function routing is required.
 
 **Frontend project**
 
